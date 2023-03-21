@@ -8,6 +8,12 @@
 
 ## 📃 Instructions
 
+### Web UI
+
+```
+http://<node-ip-address>:32080
+```
+
 ### Get credentials
 
 ```bash

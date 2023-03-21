@@ -32,24 +32,22 @@
       retries: 30
       delay: 10
 
-    - name: Render Argo CD LoadBalancer service YAML
-      template:
-        src: templates/argocd-server-loadbalancer.yaml
-        dest: /tmp/argocd-server-loadbalancer.yaml
-
-    - name: Render Argo CD NodePort service YAML
-      template:
-        src: templates/argocd-server-nodeport.yaml
-        dest: /tmp/argocd-server-nodeport.yaml
-
-    - name: Expose Argo CD web UI using LoadBalancer service
+    - name: Create Argo CD NodePort service
       k8s:
         state: present
-        apply: yes
-        src: /tmp/argocd-server-loadbalancer.yaml
-
-    - name: Expose Argo CD web UI using NodePort service
-      k8s:
-        state: present
-        apply: yes
-        src: /tmp/argocd-server-nodeport.yaml
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: argocd-server-nodeport
+            namespace: argocd
+          spec:
+            type: NodePort
+            selector:
+              app.kubernetes.io/name: argocd-server
+            ports:
+              - name: http
+                port: 80
+                targetPort: 8080
+                nodePort: 32080
+                protocol: TCP

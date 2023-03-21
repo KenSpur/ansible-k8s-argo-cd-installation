@@ -1,0 +1,55 @@
+- name: Install Argo CD on Kubernetes
+  hosts: control_plane
+  gather_facts: no
+
+  tasks:
+    - name: Create Argo CD namespace
+      k8s:
+        name: argocd
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Download Argo CD manifest
+      get_url:
+        url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+        dest: /tmp/argo-cd-install.yaml
+
+    - name: Apply Argo CD manifest
+      k8s:
+        src: /tmp/argo-cd-install.yaml
+        state: present
+        namespace: argocd
+        apply: yes
+
+    - name: Wait for Argo CD to be ready
+      k8s_info:
+        kind: Deployment
+        namespace: argocd
+        name: argocd-server
+      register: argocd_server
+      until: argocd_server.resources[0].status.replicas | default(0) | int == 1
+      retries: 30
+      delay: 10
+
+    - name: Render Argo CD LoadBalancer service YAML
+      template:
+        src: templates/argocd-server-loadbalancer.yaml
+        dest: /tmp/argocd-server-loadbalancer.yaml
+
+    - name: Render Argo CD NodePort service YAML
+      template:
+        src: templates/argocd-server-nodeport.yaml
+        dest: /tmp/argocd-server-nodeport.yaml
+
+    - name: Expose Argo CD web UI using LoadBalancer service
+      k8s:
+        state: present
+        apply: yes
+        src: /tmp/argocd-server-loadbalancer.yaml
+
+    - name: Expose Argo CD web UI using NodePort service
+      k8s:
+        state: present
+        apply: yes
+        src: /tmp/argocd-server-nodeport.yaml
